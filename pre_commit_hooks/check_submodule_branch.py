@@ -98,12 +98,14 @@ def update_branch_prop_in_gitmodules_text(
     # check if submodule currently has a branch
     if mod_branch_re.match(gitmodules_text):
         # if it currently has a branch, update branch
+        print('DEBUG # if it currently has a branch, update branch')
         return mod_branch_re.sub(
             fr'\g<1>{new_branch}',
             gitmodules_text,
         )
     else:
         # if it doesn't have a branch, add branch
+        print('DEBUG # if it doesn\'t have a branch, add branch')
         linebreak = '\r\n' if '\r\n' in gitmodules_text else '\n'
         return re.sub(
             fr"(\[submodule \"{mod_name}\"]){linebreak}",
