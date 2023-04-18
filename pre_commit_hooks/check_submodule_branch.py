@@ -130,6 +130,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         gitmodules_text = gitmodules_path.read_text()
         gitmodules_properties = parse_gitmodules_properties(gitmodules_text)
 
+    print('DEBUG gitmodules_text', '\n' + str(gitmodules_text))
+    print('DEBUG gitmodules_properties', gitmodules_properties)
+
     diff_data = get_diff_data(
         from_ref=from_ref,
         to_ref=to_ref,

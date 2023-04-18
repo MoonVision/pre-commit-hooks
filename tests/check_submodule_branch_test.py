@@ -65,9 +65,11 @@ GITMODULES_MALFORMED_2 = '''
 GITMODULES_REPO = '''[submodule "a"]
 \tpath = a
 \turl = ../repo_a
+\tbranch = branch_a
 [submodule "b"]
 \tpath = b
 \turl = ../repo_b
+\tbranch = branch_b
 '''
 
 
@@ -149,31 +151,31 @@ def repo_with_submodules(tmpdir):
         git_commit('--allow-empty', '-m', 'init', cwd='repo_a')
         subprocess.check_call(('git', 'init', 'repo_b'))
         git_commit('--allow-empty', '-m', 'init', cwd='repo_b')
+        os.chdir('repo')
         subprocess.check_call(
-            (
-                'git', '-c', 'protocol.file.allow=always', 'submodule',
-                'add', '../repo_a', 'a',
-            ),
-            cwd='repo',
+            'git -c protocol.file.allow=always submodule add ../repo_a a'
+            .split(' '),
         )
         subprocess.check_call(
             ('git', 'checkout', '-b', 'branch_a'),
-            cwd='repo/a',
+            cwd='a',
         )
         subprocess.check_call(
-            (
-                'git', '-c', 'protocol.file.allow=always', 'submodule',
-                'add', '../repo_b', 'b',
-            ),
-            cwd='repo',
+            'git submodule set-branch --branch branch_a a'.split(' '),
         )
         subprocess.check_call(
-            ('git', 'checkout', '-b', 'branch_b'),
-            cwd='repo/b',
+            'git -c protocol.file.allow=always submodule add ../repo_b b'
+            .split(' '),
         )
-        subprocess.check_call(('git', 'add', '.'), cwd='repo')
-        git_commit('-m', 'add submodules', cwd='repo')
-        os.chdir('repo')
+        subprocess.check_call(
+            'git checkout -b branch_b'.split(' '),
+            cwd='b',
+        )
+        subprocess.check_call(
+            'git submodule set-branch --branch branch_b b'.split(' '),
+        )
+        subprocess.check_call(('git', 'add', '.'))
+        git_commit('-m', 'add submodules')
         yield
 
 
@@ -183,4 +185,15 @@ def test_repo_with_submodules_has_expected_gitmodules(repo_with_submodules):
 
 def test_main_no_complaints(repo_with_submodules):
     git_commit('--allow-empty', '-m', 'init', cwd='a')
+    subprocess.check_call(('git', 'add', '.'))
     assert main(()) == 0
+
+
+def test_main_branch_mismatch(repo_with_submodules):
+    subprocess.check_call(
+        ('git', 'checkout', '-b', 'new_branch'),
+        cwd='a',
+    )
+    git_commit('--allow-empty', '-m', 'init', cwd='a')
+    subprocess.check_call(('git', 'add', '.'))
+    assert main(()) > 0
