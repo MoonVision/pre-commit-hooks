@@ -51,7 +51,6 @@ class DiffLine:
 def get_diff_data(
     from_ref: str | None,
     to_ref: str | None,
-    filenames: list[str],
 ) -> Iterator[DiffLine]:
     if from_ref and to_ref:
         diff_arg = f'{from_ref}...{to_ref}'
@@ -119,7 +118,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('--allow-unset', action='store_true')
     parser.add_argument('--update-gitmodules-file', action='store_true')
-    parser.add_argument('filenames', nargs='*')
     args = parser.parse_args(argv)
 
     from_ref = os.environ.get('PRE_COMMIT_FROM_REF')
@@ -135,7 +133,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     diff_data = get_diff_data(
         from_ref=from_ref,
         to_ref=to_ref,
-        filenames=args.filenames,
     )
     retv = 0
     gitmodules_text_changed = False
