@@ -147,7 +147,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         )
                 else:
                     gitmodules_text_changed = True
-                    gitmodules_text = re.sub(r"(\[submodule \"product-sync\"](\s.+)+branch\s?=\s?)(.+)", "\g<1>blub", gitmodules_text)
+                    gitmodules_text = re.sub(
+                        fr"(\[submodule \"{submodule_name}\"](\s.+)+branch\s?=\s?)(.+)",
+                        fr"\g<1>{abbrev_ref_out}",
+                        gitmodules_text,
+                    )
 
     if gitmodules_text_changed:
         gitmodules_path.write_text(gitmodules_text)
