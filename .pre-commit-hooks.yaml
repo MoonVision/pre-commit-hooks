@@ -40,6 +40,12 @@
     language: python
     types: [text, executable]
     stages: [commit, push, manual]
+-   id: check-git-module-branch
+    name: check that submodules are on the configured branch
+    description: check that submodules are on the branch configured in .gitmodules
+    entry: check-git-module-branch
+    language: python
+    types: [directory, gitmodules]
 -   id: check-json
     name: check json
     description: checks json files for parseable syntax.
