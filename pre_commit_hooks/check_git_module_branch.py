@@ -74,6 +74,25 @@ def get_diff_data(from_ref: Optional[str], to_ref: Optional[str], filenames: lis
         )
 
 
+def update_branch_prop_in_gitmodules_text(gitmodules_text: str, mod_name: str, new_branch: str) -> str:
+    mod_branch_re = re.compile(fr"(\[submodule \"{mod_name}\"](\s[^\[]+)+branch\s?=\s?)(.+)")
+    # check if submodule currently has a branch
+    if mod_branch_re.match(gitmodules_text):
+        # if it currently has a branch, update branch
+        return mod_branch_re.sub(
+            fr"\g<1>{new_branch}",
+            gitmodules_text,
+        )
+    else:
+        # if it doesn't have a branch, add branch
+        linebreak = "\r\n" if "\r\n" in gitmodules_text else "\n"
+        return re.sub(
+            fr"(\[submodule \"{mod_name}\"])",
+            fr"\g<1>{linebreak}\tbranch = {new_branch}",
+            gitmodules_text,
+        )
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--allow-unset", action="store_true")
@@ -147,10 +166,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         )
                 else:
                     gitmodules_text_changed = True
-                    gitmodules_text = re.sub(
-                        fr"(\[submodule \"{submodule_name}\"](\s.+)+branch\s?=\s?)(.+)",
-                        fr"\g<1>{abbrev_ref_out}",
-                        gitmodules_text,
+                    gitmodules_text = update_branch_prop_in_gitmodules_text(
+                        gitmodules_text=gitmodules_text,
+                        mod_name=submodule_name,
+                        new_branch=abbrev_ref_out,
                     )
 
     if gitmodules_text_changed:
