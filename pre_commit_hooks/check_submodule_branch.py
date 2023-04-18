@@ -62,6 +62,7 @@ def get_diff_data(
         'git', 'diff', '--diff-filter=A', '--raw', diff_arg, '--',
         *filenames,
     )
+    print('DEBUG', 'diff_out\n', diff_out)
 
     for line in diff_out.splitlines():
         fields = line.split('\t', 1)
@@ -179,6 +180,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     '--contains',
                     diff_line.sha1_dst,
                 )
+                print('DEBUG', 'on_branch_out\n', on_branch_out)
                 if props_branch not in on_branch_out:
                     retv += 1
                     branch_prop_needs_update = True
@@ -197,6 +199,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     'HEAD',
                     cwd=submodule_path,
                 )
+                print('DEBUG', 'abbrev_ref_out\n', abbrev_ref_out)
                 if abbrev_ref_out == 'HEAD':
                     if not props_branch and not args.allow_unset:
                         print(
