@@ -104,8 +104,9 @@ def update_branch_prop_in_gitmodules_text(
         )
     else:
         # if it doesn't have a branch, add branch
+        linebreak = '\r\n' if '\r\n' in gitmodules_text else '\n'
         return re.sub(
-            fr"(\[submodule \"{mod_name}\"])",
+            fr"(\[submodule \"{mod_name}\"]){linebreak}",
             fr'\g<1>\tbranch = {new_branch}',
             gitmodules_text,
         )
