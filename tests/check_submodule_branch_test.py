@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -59,6 +60,14 @@ GITMODULES_MALFORMED_1 = '''
 GITMODULES_MALFORMED_2 = '''
 [submodule ""]
 \tbranch = branch_a
+'''
+
+GITMODULES_REPO = '''[submodule "a"]
+\tpath = a
+\turl = ../repo_a
+[submodule "b"]
+\tpath = b
+\turl = ../repo_b
 '''
 
 
@@ -166,6 +175,10 @@ def repo_with_submodules(tmpdir):
         git_commit('-m', 'add submodules', cwd='repo')
         os.chdir('repo')
         yield
+
+
+def test_repo_with_submodules_has_expected_gitmodules(repo_with_submodules):
+    assert Path('.gitmodules').read_text() == GITMODULES_REPO
 
 
 def test_main_no_complaints(repo_with_submodules):
