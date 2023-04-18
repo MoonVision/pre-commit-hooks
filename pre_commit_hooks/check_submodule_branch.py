@@ -93,11 +93,11 @@ def update_branch_prop_in_gitmodules_text(
     new_branch: str,
 ) -> str:
     mod_branch_re = re.compile(
-        fr"(\[submodule \"{mod_name}\"]([^\[])+branch\s?=\s?)(.+)(\r?\n)?",
+        fr"(\[submodule \"{mod_name}\"]([^\[])+branch\s?=\s?)(.+)",
         flags=re.MULTILINE,
     )
     # check if submodule currently has a branch
-    if mod_branch_re.match(gitmodules_text):
+    if mod_branch_re.search(gitmodules_text):
         # if it currently has a branch, update branch
         print('DEBUG # if it currently has a branch, update branch')
         return mod_branch_re.sub(
