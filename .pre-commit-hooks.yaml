@@ -45,9 +45,8 @@
     description: check that submodules are on the branch configured in .gitmodules
     entry: check-submodule-branch
     language: python
-    # Despite what the docs suggest directory doesn't run the check
-    # on submodule changes.
-    # types_or: [directory, gitmodules]
+    types: []
+    types_or: [directory, gitmodules]
 -   id: check-json
     name: check json
     description: checks json files for parseable syntax.
