@@ -57,6 +57,7 @@ class Submodule:
 def get_diff_data(
     from_ref: str | None,
     to_ref: str | None,
+    filenames: list[str],
 ) -> Iterator[DiffLine]:
     if from_ref and to_ref:
         diff_arg = f'{from_ref}...{to_ref}'
@@ -64,7 +65,7 @@ def get_diff_data(
         diff_arg = '--staged'
 
     diff_out = cmd_output(
-        'git', 'diff', '--raw', diff_arg, '--',
+        'git', 'diff', '--raw', diff_arg, '--', *filenames,
     )
 
     for line in diff_out.splitlines():
@@ -136,6 +137,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     diff_data = get_diff_data(
         from_ref=from_ref,
         to_ref=to_ref,
+        filenames=args.filenames,
     )
     retv = 0
     gitmodules_text_changed = False
