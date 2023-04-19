@@ -66,8 +66,6 @@ def get_diff_data(
     diff_out = cmd_output(
         'git', 'diff', '--raw', diff_arg, '--',
     )
-    print('DEBUG', 'git', 'diff', '--raw', diff_arg, '--')
-    print('DEBUG', 'diff_out\n' + diff_out)
 
     for line in diff_out.splitlines():
         fields = line.split('\t', 1)
@@ -104,14 +102,12 @@ def update_branch_prop_in_gitmodules_text(
     # check if submodule currently has a branch
     if mod_branch_re.search(gitmodules_text):
         # if it currently has a branch, update branch
-        print('DEBUG # if it currently has a branch, update branch')
         return mod_branch_re.sub(
             fr'\g<1>{new_branch}',
             gitmodules_text,
         )
     else:
         # if it doesn't have a branch, add branch
-        print('DEBUG # if it doesn\'t have a branch, add branch')
         linebreak = '\r\n' if '\r\n' in gitmodules_text else '\n'
         return re.sub(
             fr"(\[submodule \"{mod_name}\"]){linebreak}",
@@ -137,9 +133,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         gitmodules_text = gitmodules_path.read_text()
         gitmodules_properties = parse_gitmodules_properties(gitmodules_text)
 
-    print('DEBUG gitmodules_text', '\n' + str(gitmodules_text))
-    print('DEBUG gitmodules_properties', gitmodules_properties)
-
     diff_data = get_diff_data(
         from_ref=from_ref,
         to_ref=to_ref,
@@ -151,7 +144,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     diff_contains_gitmodules_changes = False
 
     for diff_line in diff_data:
-        print('DEBUG', 'diff_line', diff_line)
         if diff_line.dst == '.gitmodules' or (
             diff_line.dst is None and diff_line.src == '.gitmodules',
         ):
@@ -210,14 +202,6 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         branch_prop_needs_update = False
         if props_branch:
-            print(
-                'DEBUG', 'cmd_output\n',
-                'git',
-                'branch',
-                props_branch,
-                '--contains',
-                submodule_sha1,
-            )
             on_branch_out = cmd_output(
                 'git',
                 'branch',
@@ -227,7 +211,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 '--',
                 cwd=submodule_path,
             )
-            print('DEBUG', 'on_branch_out\n' + on_branch_out)
             if props_branch not in on_branch_out:
                 retv += 1
                 branch_prop_needs_update = True
@@ -247,7 +230,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 'HEAD',
                 cwd=submodule_path,
             )
-            print('DEBUG', 'abbrev_ref_out\n' + abbrev_ref_out)
             if abbrev_ref_out == 'HEAD':
                 if not props_branch and not args.allow_unset:
                     print(
