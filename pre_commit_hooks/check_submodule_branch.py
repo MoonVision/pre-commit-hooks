@@ -165,12 +165,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     if diff_contains_gitmodules_changes and gitmodules_properties:
         for name, props in gitmodules_properties.items():
             submodule_path = props['path']
-            submodule_sha1 = cmd_output(
-                'git', 'rev-parse', 'HEAD', cwd=submodule_path,
-            ).strip()
-            submodules_to_check.append(
-                Submodule(sha1=submodule_sha1, path=submodule_path),
-            )
+            if not any(
+                module.path == submodule_path
+                for module
+                in submodules_to_check
+            ):
+                submodule_sha1 = cmd_output(
+                    'git', 'rev-parse', 'HEAD', cwd=submodule_path,
+                ).strip()
+                submodules_to_check.append(
+                    Submodule(sha1=submodule_sha1, path=submodule_path),
+                )
 
     for submodule in submodules_to_check:
         submodule_name = None
