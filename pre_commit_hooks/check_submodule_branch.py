@@ -124,6 +124,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('--allow-unset', action='store_true')
     parser.add_argument('--update-gitmodules-file', action='store_true')
+    parser.add_argument('filenames', nargs='*')
     args = parser.parse_args(argv)
 
     from_ref = os.environ.get('PRE_COMMIT_FROM_REF')
