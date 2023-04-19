@@ -11,6 +11,7 @@ from pre_commit_hooks.check_submodule_branch import parse_gitmodules_properties
 from pre_commit_hooks.check_submodule_branch import (
     update_branch_prop_in_gitmodules_text,
 )
+from pre_commit_hooks.util import cmd_output
 from testing.util import git_commit
 
 GITMODULES_A_BRANCH_A = '''
@@ -73,6 +74,36 @@ GITMODULES_REPO = '''[submodule "a"]
 '''
 
 
+GITMODULES_REPO_BRANCHES_UNSET = '''[submodule "a"]
+\tpath = a
+\turl = ../repo_a
+[submodule "b"]
+\tpath = b
+\turl = ../repo_b
+'''
+
+GITMODULES_REPO_BRANCH_A_UNSET = '''[submodule "a"]
+\tpath = a
+\turl = ../repo_a
+[submodule "b"]
+\tpath = b
+\turl = ../repo_b
+\tbranch = branch_b
+'''
+
+
+GITMODULES_REPO_UPDATED = '''[submodule "a"]
+\tbranch = branch_a
+\tpath = a
+\turl = ../repo_a
+\t
+[submodule "b"]
+\tpath = b
+\turl = ../repo_b
+\tbranch = branch_b
+'''
+
+
 @pytest.mark.parametrize(
     'gitmodules_text, expected', [
         (
@@ -127,6 +158,12 @@ def test_parse_gitmodules_properties_malformed(gitmodules_text):
             GITMODULES_A_B_BRANCH_A_B,
             GITMODULES_A_B_BRANCH_A_A,
             'b',
+            'branch_a',
+        ),
+        (
+            GITMODULES_REPO.replace('branch_a', 'wrong-branch'),
+            GITMODULES_REPO,
+            'a',
             'branch_a',
         ),
     ],
@@ -196,4 +233,62 @@ def test_main_branch_mismatch(repo_with_submodules):
     )
     git_commit('--allow-empty', '-m', 'init', cwd='a')
     subprocess.check_call(('git', 'add', '.'))
-    assert main(()) > 0
+    assert main(()) == 1
+
+
+def test_main_earlier_commit_on_branch_is_fine(repo_with_submodules):
+    commit_sha1 = cmd_output('git', 'rev-parse', 'HEAD', cwd='a')
+    git_commit('--allow-empty', '-m', 'another commit', cwd='a')
+    subprocess.check_call(('git', 'checkout', commit_sha1.strip()), cwd='a')
+    assert main(()) == 0
+
+
+def test_main_gitmodules_changed_branch_wrong_errors(
+    repo_with_submodules,
+):
+    Path('.gitmodules').write_text(
+        GITMODULES_REPO.replace('branch_a', 'wrong-branch'),
+    )
+    subprocess.check_call(('git', 'add', '.gitmodules'))
+    assert main(()) == 1
+
+
+def test_main_gitmodules_branch_unset_errors(repo_with_submodules):
+    Path('.gitmodules').write_text(
+        GITMODULES_REPO.replace('branch = branch_a', ''),
+    )
+    subprocess.check_call(('git', 'add', '.gitmodules'))
+    assert main(()) == 1
+
+
+def test_main_gitmodules_branch_unset_doesnt_error_with_allow_unset(
+    repo_with_submodules,
+):
+    Path('.gitmodules').write_text(
+        GITMODULES_REPO.replace('branch = branch_a', ''),
+    )
+    subprocess.check_call(('git', 'add', '.gitmodules'))
+    assert main(('--allow-unset',)) == 0
+
+
+@pytest.mark.parametrize(
+    'gitmodules_text, expected', [
+        (
+            GITMODULES_REPO.replace('branch = branch_a', ''),
+            GITMODULES_REPO_UPDATED,
+        ),
+        (
+            GITMODULES_REPO.replace('branch_a', 'wrong-branch'),
+            GITMODULES_REPO,
+        ),
+    ],
+)
+def test_main_update_gitmodules_file_updates_file(
+    repo_with_submodules, gitmodules_text, expected,
+):
+    Path('.gitmodules').write_text(
+        gitmodules_text,
+    )
+    subprocess.check_call(('git', 'add', '.gitmodules'))
+    main(('--update-gitmodules-file',))
+    assert Path('.gitmodules').read_text() == expected

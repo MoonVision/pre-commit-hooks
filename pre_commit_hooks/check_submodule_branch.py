@@ -48,6 +48,12 @@ class DiffLine:
     dst: str | None
 
 
+@dataclasses.dataclass
+class Submodule:
+    sha1: str
+    path: str
+
+
 def get_diff_data(
     from_ref: str | None,
     to_ref: str | None,
@@ -109,7 +115,7 @@ def update_branch_prop_in_gitmodules_text(
         linebreak = '\r\n' if '\r\n' in gitmodules_text else '\n'
         return re.sub(
             fr"(\[submodule \"{mod_name}\"]){linebreak}",
-            fr'\g<1>{linebreak}\tbranch = {new_branch}',
+            fr'\g<1>{linebreak}\tbranch = {new_branch}{linebreak}',
             gitmodules_text,
         )
 
@@ -139,96 +145,122 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     retv = 0
     gitmodules_text_changed = False
+
+    submodules_to_check: list[Submodule] = []
+    diff_contains_gitmodules_changes = False
+
     for diff_line in diff_data:
         print('DEBUG', 'diff_line', diff_line)
+        if diff_line.dst == '.gitmodules' or (
+            diff_line.dst is None and diff_line.src == '.gitmodules',
+        ):
+            diff_contains_gitmodules_changes = True
         if diff_line.mode_dst == '160000':
             # It's a submodule
-            submodule_path = diff_line.src
             if diff_line.status in ('C', 'R') and diff_line.dst:
                 # For copy and rename we check the destination
-                submodule_path = diff_line.dst
-
-            submodule_name = None
-            submodule_props: dict[str, str] | None = None
-            if gitmodules_properties:
-                for name, props in gitmodules_properties.items():
-                    if submodule_path == props['path']:
-                        submodule_name = name
-                        submodule_props = props
-                        break
-            props_branch = None
-            if submodule_props and 'branch' in submodule_props:
-                props_branch = submodule_props['branch']
-            if not args.allow_unset:
-                if not submodule_props:
-                    retv += 1
-                    print(
-                        f'No submodule `{submodule_path}` found in '
-                        f'`.gitmodules`. This happens when a submodule '
-                        f'is added with `git add` rather than with the '
-                        f'`git submodule` command.',
-                    )
-                elif not props_branch:
-                    retv += 1
-                    print(
-                        f'Property `branch` unset for submodule '
-                        f'`{submodule_name}`.',
-                    )
-
-            branch_prop_needs_update = False
-            if props_branch:
-                print(
-                    'DEBUG', 'cmd_output\n',
-                    'git',
-                    'branch',
-                    props_branch,
-                    '--contains',
-                    diff_line.sha1_dst,
+                submodules_to_check.append(
+                    Submodule(sha1=diff_line.sha1_dst, path=diff_line.dst),
                 )
-                on_branch_out = cmd_output(
-                    'git',
-                    'branch',
-                    props_branch,
-                    '--contains',
-                    diff_line.sha1_dst,
-                    '--',
-                    cwd=submodule_path,
-                )
-                print('DEBUG', 'on_branch_out\n' + on_branch_out)
-                if props_branch not in on_branch_out:
-                    retv += 1
-                    branch_prop_needs_update = True
-                    print(
-                        f'The commit of the submodule `{submodule_path}` '
-                        f'is not part of the configured branch '
-                        f'`{props_branch}`.',
-                    )
             else:
-                branch_prop_needs_update = True
-
-            if args.update_gitmodules_file and branch_prop_needs_update:
-                abbrev_ref_out = cmd_output(
-                    'git',
-                    'rev-parse',
-                    '--abbrev-ref',
-                    'HEAD',
-                    cwd=submodule_path,
+                submodules_to_check.append(
+                    Submodule(sha1=diff_line.sha1_src, path=diff_line.src),
                 )
-                print('DEBUG', 'abbrev_ref_out\n' + abbrev_ref_out)
-                if abbrev_ref_out == 'HEAD':
-                    if not props_branch and not args.allow_unset:
-                        print(
-                            f'Submodule `{submodule_name}` has a detached '
-                            f'HEAD unable to retrieve branch name to update '
-                            f'`.gitmodules` file.',
-                        )
-                elif gitmodules_text and submodule_name:
-                    gitmodules_text_changed = True
-                    gitmodules_text = update_branch_prop_in_gitmodules_text(
-                        gitmodules_text=gitmodules_text,
-                        mod_name=submodule_name,
-                        new_branch=abbrev_ref_out,
+
+    if diff_contains_gitmodules_changes and gitmodules_properties:
+        for name, props in gitmodules_properties.items():
+            submodule_path = props['path']
+            submodule_sha1 = cmd_output(
+                'git', 'rev-parse', 'HEAD', cwd=submodule_path,
+            ).strip()
+            submodules_to_check.append(
+                Submodule(sha1=submodule_sha1, path=submodule_path),
+            )
+
+    for submodule in submodules_to_check:
+        submodule_name = None
+        submodule_path = submodule.path
+        submodule_props: dict[str, str] | None = None
+        submodule_sha1 = submodule.sha1
+        if gitmodules_properties:
+            for name, props in gitmodules_properties.items():
+                if submodule_path == props['path']:
+                    submodule_name = name
+                    submodule_props = props
+                    break
+        props_branch = None
+        if submodule_props and 'branch' in submodule_props:
+            props_branch = submodule_props['branch']
+        if not args.allow_unset:
+            if not submodule_props:
+                retv += 1
+                print(
+                    f'No submodule `{submodule_path}` found in '
+                    f'`.gitmodules`. This happens when a submodule '
+                    f'is added with `git add` rather than with the '
+                    f'`git submodule` command.',
+                )
+            elif not props_branch:
+                retv += 1
+                print(
+                    f'Property `branch` unset for submodule '
+                    f'`{submodule_name}`.',
+                )
+
+        branch_prop_needs_update = False
+        if props_branch:
+            print(
+                'DEBUG', 'cmd_output\n',
+                'git',
+                'branch',
+                props_branch,
+                '--contains',
+                submodule_sha1,
+            )
+            on_branch_out = cmd_output(
+                'git',
+                'branch',
+                props_branch,
+                '--contains',
+                submodule_sha1,
+                '--',
+                cwd=submodule_path,
+            )
+            print('DEBUG', 'on_branch_out\n' + on_branch_out)
+            if props_branch not in on_branch_out:
+                retv += 1
+                branch_prop_needs_update = True
+                print(
+                    f'The commit of the submodule `{submodule_path}` '
+                    f'is not part of the configured branch '
+                    f'`{props_branch}`.',
+                )
+        else:
+            branch_prop_needs_update = True
+
+        if args.update_gitmodules_file and branch_prop_needs_update:
+            abbrev_ref_out = cmd_output(
+                'git',
+                'rev-parse',
+                '--abbrev-ref',
+                'HEAD',
+                cwd=submodule_path,
+            )
+            print('DEBUG', 'abbrev_ref_out\n' + abbrev_ref_out)
+            if abbrev_ref_out == 'HEAD':
+                if not props_branch and not args.allow_unset:
+                    print(
+                        f'Submodule `{submodule_name}` has a detached '
+                        f'HEAD unable to retrieve branch name to update '
+                        f'`.gitmodules` file.',
                     )
+            elif gitmodules_text and submodule_name:
+                gitmodules_text_changed = True
+                gitmodules_text = update_branch_prop_in_gitmodules_text(
+                    gitmodules_text=gitmodules_text,
+                    mod_name=submodule_name,
+                    new_branch=abbrev_ref_out.strip(),
+                )
 
     if gitmodules_text_changed and gitmodules_text is not None:
         gitmodules_path.write_text(gitmodules_text)
