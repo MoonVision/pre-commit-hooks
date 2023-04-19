@@ -61,6 +61,14 @@ Check for files that contain merge conflict strings.
 #### `check-shebang-scripts-are-executable`
 Checks that scripts with shebangs are executable.
 
+#### `check-submodule-branch`
+Checks that the commits of git submodules are on the branch specified by the
+`.gitmodules` file branch property.
+  - `--allow-unset` - Allow submodules without a branch property in
+    `.gitmodules`.
+  - `--update-gitmodules-file` - Update the branch property in .gitmodules
+    if a submodule has a different branch checked out.
+
 #### `check-symlinks`
 Checks for symlinks which do not point to anything.
 
