@@ -159,7 +159,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
             else:
                 submodules_to_check.append(
-                    Submodule(sha1=diff_line.sha1_src, path=diff_line.src),
+                    Submodule(sha1=diff_line.sha1_dst, path=diff_line.src),
                 )
 
     if diff_contains_gitmodules_changes and gitmodules_properties:
